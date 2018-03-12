@@ -1,0 +1,28 @@
+---
+- hosts: all
+  become: yes
+  tasks:
+  - name: Add Kernel Modules.
+    command: modprobe {{item}}
+    with_items:    
+      - ip_vs
+      - ip_vs_rr
+      - ip_vs_wrr
+      - ip_vs_sh
+      - nf_conntrack_ipv4
+  - name: Kernel Modules Boot time configuration.
+    lineinfile: path=/etc/modules line='{{item}}' create=yes state=present
+    with_items: 
+      - ip_vs
+      - ip_vs_rr
+      - ip_vs_wrr
+      - ip_vs_sh
+      - nf_conntrack_ipv4
+  - name: Set up IP Forwarding.
+    sysctl: name=net.ipv4.ip_forward value=1 state=present reload=yes sysctl_set=yes
+  - name: Make Sure Services are enabled at boot.
+    service: name={{item}} state=started enabled=yes
+    with_items:
+      - docker
+      - ntp
+      - kubelet

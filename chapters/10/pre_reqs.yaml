@@ -1,0 +1,22 @@
+---
+- hosts: all
+  become: yes
+  tasks:
+  - name: Updating OS.
+    shell: "apt-get -y update && apt-get install -y apt-transport-https"
+  - name: Adding K8 Repo.
+    apt_repository:
+      repo: 'deb http://apt.kubernetes.io/ kubernetes-xenial main'
+      state: present
+  - name: Adding Public Key for K8 Repo.
+    apt_key:
+      url: https://packages.cloud.google.com/apt/doc/apt-key.gpg
+      state: present
+  - name: Installing required packages.
+    apt: name={{ item }} state=present allow_unauthenticated=yes
+    with_items:
+       - docker.io
+       - kubelet
+       - kubeadm
+       - kubectl
+       - ntp

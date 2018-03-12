@@ -1,0 +1,47 @@
+domain   = 'devopsgeek.co.uk'
+
+# use two digits id below, please
+nodes = [
+  { :hostname => 'master0',  :ip => '192.168.33.20', :id => '20' },
+  { :hostname => 'master1',  :ip => '192.168.33.21', :id => '21' },
+  { :hostname => 'master2',  :ip => '192.168.33.22', :id => '22' },
+  { :hostname => 'node1',   :ip => '192.168.33.23', :id => '23' },
+  { :hostname => 'node2',   :ip => '192.168.33.24', :id => '24' },
+  { :hostname => 'node3',   :ip => '192.168.33.25', :id => '25' },
+]
+
+memory = 1500
+
+$script = <<SCRIPT
+sudo mv hosts /etc/hosts
+chmod 0600 /home/vagrant/.ssh/id_rsa
+usermod -a -G vagrant ubuntu
+cp -Rvf /home/vagrant/.ssh /home/ubuntu
+chown -Rvf ubuntu /home/ubuntu
+apt-get -y update
+apt-get -y install python-minimal python-apt
+SCRIPT
+
+Vagrant.configure("2") do |config|
+  config.ssh.insert_key = false
+  nodes.each do |node|
+    config.vm.define node[:hostname] do |nodeconfig|
+      nodeconfig.vm.box = "ubuntu/xenial64"
+      nodeconfig.vm.hostname = node[:hostname]
+      nodeconfig.landrush.enabled = true
+      nodeconfig.vm.network :private_network, ip: node[:ip]
+      nodeconfig.vm.provider :virtualbox do |vb|
+        vb.name = node[:hostname]+"."+domain
+        vb.memory = memory
+        vb.cpus = 2
+        vb.customize ['modifyvm', :id, '--natdnshostresolver2', 'on']
+        vb.customize ['modifyvm', :id, '--natdnsproxy2', 'on']
+        vb.customize ['modifyvm', :id, '--macaddress2', "5CA2AB2E00"+node[:id]]
+        vb.customize ['modifyvm', :id, '--natnet2', "192.168/16"]
+      end
+      nodeconfig.vm.provision "file", source: "hosts", destination: "hosts"
+      nodeconfig.vm.provision "file", source: "~/.vagrant.d/insecure_private_key", destination: "/home/vagrant/.ssh/id_rsa"
+      nodeconfig.vm.provision "shell", inline: $script
+    end
+  end
+end

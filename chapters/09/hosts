@@ -1,0 +1,7 @@
+127.0.0.1 localhost localhost.localdomain localhost4 localhost4.localdomain4
+192.168.33.20 master0.devopsgeek.co.uk master0
+192.168.33.21 master1.devopsgeek.co.uk master1
+192.168.33.22 master2.devopsgeek.co.uk master2
+192.168.33.23 node1.devopsgeek.co.uk node1
+192.168.33.24 node2.devopsgeek.co.uk node2
+192.168.33.25 node3.devopsgeek.co.uk node3
