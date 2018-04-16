@@ -23,7 +23,19 @@ After that,
 ```bash
 $mkdir $HOME/masteringkubernetes
 ```
-Create a file called Vagrantfile with following content inside the directory you just created.
+Create a hosts file inside $HOME/masteringkubernetes with following content.
+
+```bash
+127.0.0.1 localhost localhost.localdomain localhost4 localhost4.localdomain4
+192.168.33.20 master0.devopsgeek.co.uk master0
+192.168.33.21 master1.devopsgeek.co.uk master1
+192.168.33.22 master2.devopsgeek.co.uk master2
+192.168.33.23 node1.devopsgeek.co.uk node1
+192.168.33.24 node2.devopsgeek.co.uk node2
+192.168.33.25 node3.devopsgeek.co.uk node3
+```
+
+After that create a file called Vagrantfile with following content inside the directory you just created.
 
 ```bash
 domain   = 'devopsgeek.co.uk'
@@ -80,3 +92,116 @@ $ cd $HOME/masteringkubernetes
 $ vagrant up
 ```
 Please note vagrant up will take some time depending upon the hardware you have got on your machine. It should take around 15-20 min I reckon.
+
+## Preparing VMs for Kubernetes
+
+You are going to installed ansible installed on your host OS (Laptop or PC) before you can bootstrap the VMs for kubernetes installation.
+
+For MacOS perform following steps,
+
+```bash
+Install Xcode
+sudo easy_install pip
+sudo pip install ansible --quiet
+```
+For Linux perform following steps,
+
+```bash
+For RHEL based OS,
+sudo yum install ansible
+
+For Debian based OS,
+$ sudo apt-get install software-properties-common
+$ sudo apt-add-repository ppa:ansible/ansible
+$ sudo apt-get update
+$ sudo apt-get install ansible
+```
+
+After you have ansible installed, please create following files.
+
+```bash
+
+cd $HOME/masteringkubernetes
+
+cat >ansible.cfg <<EOF
+[defaults]
+inventory = ./inventory
+EOF
+
+cat >inventory <<EOF
+[all]
+master0 ansible_connection=ssh ansible_ssh_user=vagrant
+master1 ansible_connection=ssh ansible_ssh_user=vagrant
+master2 ansible_connection=ssh ansible_ssh_user=vagrant
+node1 ansible_connection=ssh ansible_ssh_user=vagrant
+node2 ansible_connection=ssh ansible_ssh_user=vagrant
+node3 ansible_connection=ssh ansible_ssh_user=vagrant
+
+[masters]
+master0 ansible_connection=ssh ansible_ssh_user=vagrant
+master1 ansible_connection=ssh ansible_ssh_user=vagrant
+master2 ansible_connection=ssh ansible_ssh_user=vagrant
+
+[workers]
+node1 ansible_connection=ssh ansible_ssh_user=vagrant
+node2 ansible_connection=ssh ansible_ssh_user=vagrant
+node3 ansible_connection=ssh ansible_ssh_user=vagrant
+EOF
+
+cat > pre_reqs.yaml <<EOF
+---
+- hosts: all
+  become: yes
+  tasks:
+  - name: Updating OS.
+    shell: "apt-get -y update && apt-get install -y apt-transport-https"
+  - name: Adding K8 Repo.
+    apt_repository:
+      repo: 'deb http://apt.kubernetes.io/ kubernetes-xenial main'
+      state: present
+  - name: Adding Public Key for K8 Repo.
+    apt_key:
+      url: https://packages.cloud.google.com/apt/doc/apt-key.gpg
+      state: present
+      validate_certs: no
+  - name: Installing required packages.
+    apt: name={{ item }} state=present allow_unauthenticated=yes
+    with_items:
+       - docker.io
+       - kubelet
+       - kubeadm
+       - kubectl
+       - ntp
+EOF
+
+cat > kernel_params.yaml <<EOF
+---
+- hosts: all
+  become: yes
+  tasks:
+  - name: Add Kernel Modules.
+    command: modprobe {{item}}
+    with_items:
+      - ip_vs
+      - ip_vs_rr
+      - ip_vs_wrr
+      - ip_vs_sh
+      - nf_conntrack_ipv4
+  - name: Kernel Modules Boot time configuration.
+    lineinfile: path=/etc/modules line='{{item}}' create=yes state=present
+    with_items:
+      - ip_vs
+      - ip_vs_rr
+      - ip_vs_wrr
+      - ip_vs_sh
+      - nf_conntrack_ipv4
+  - name: Set up IP Forwarding.
+    sysctl: name=net.ipv4.ip_forward value=1 state=present reload=yes sysctl_set=yes
+  - name: Make Sure Services are enabled at boot.
+    service: name={{item}} state=started enabled=yes
+    with_items:
+      - docker
+      - ntp
+      - kubelet
+EOF
+
