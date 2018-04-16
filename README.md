@@ -6,6 +6,8 @@ The overall setup will look like as following.
 
 ![Alt text](K8-Setup.png?raw=true "Kubernetes Setup")
 
+## Infrastructure Setup
+
 So lets start creating the infrastructure needed for our kubernetes setup.
 
 This tutorial is going assume you have vagrant and virtualbox installed. Feel free to download them from https://www.vagrantup.com/ and https://www.virtualbox.org/wiki/Downloads in case if you dont have it.
@@ -13,9 +15,15 @@ This tutorial is going assume you have vagrant and virtualbox installed. Feel fr
 After you have vagrant and virtualbox installed, Please install vagrant plug-in called landrush.
 
 ```bash
+$vagrant plugin install landrush
+```
+
+After that,
+
+```bash
 $mkdir $HOME/masteringkubernetes
 ```
-Create a file called Vagrantfile inside the directory you just created.
+Create a file called Vagrantfile with following content inside the directory you just created.
 
 ```bash
 domain   = 'devopsgeek.co.uk'
@@ -65,3 +73,10 @@ Vagrant.configure("2") do |config|
   end
 end
 ```
+After you have the vagrantfile, create the VMs as following.
+
+```bash
+$ cd $HOME/masteringkubernetes
+$ vagrant up
+```
+Please note vagrant up will take some time depending upon the hardware you have got on your machine. It should take around 15-20 min I reckon.
