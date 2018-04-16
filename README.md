@@ -148,7 +148,7 @@ node2 ansible_connection=ssh ansible_ssh_user=vagrant
 node3 ansible_connection=ssh ansible_ssh_user=vagrant
 EOF
 
-cat > pre_reqs.yaml <<EOF
+cat >pre_reqs.yaml <<EOF
 ---
 - hosts: all
   become: yes
@@ -174,7 +174,7 @@ cat > pre_reqs.yaml <<EOF
        - ntp
 EOF
 
-cat > kernel_params.yaml <<EOF
+cat >kernel_params.yaml <<EOF
 ---
 - hosts: all
   become: yes
@@ -204,4 +204,13 @@ cat > kernel_params.yaml <<EOF
       - ntp
       - kubelet
 EOF
+```
 
+Now you are good to run ansible playbooks on our VMs.
+
+You need to run both the ansible playbooks on all the nodes in the cluster so let's run,
+
+```bash
+$ ansible-playbook -i inventory pre-reqs.yaml
+$ ansible-playbook -i inventory kernel-params.yaml
+```
