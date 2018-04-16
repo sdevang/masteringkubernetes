@@ -214,3 +214,35 @@ You need to run both the ansible playbooks on all the nodes in the cluster so le
 $ ansible-playbook -i inventory pre-reqs.yaml
 $ ansible-playbook -i inventory kernel-params.yaml
 ```
+
+If the ansible playbooks ran successfully then you have configured the nodes for Kubernetes installation.
+
+## Setting up SSH Config
+
+
+
+## Passwordless SSH authentication
+
+We need to copy over a few files and certificates throughout the installation so to make our life easy, lets setup passwordless ssh authetication between all the master nodes.
+
+The first step is,
+
+```bash
+Generate SSH Key pair on master0 node,
+
+$ssh master0
+
+## ETCd clustering
+
+You must have a storage backend for kubernetes so that kubernetes can store its metadata persitently. For that purpose, we are going to use etcd which is a famous and widely used key-value store used for kubernetes.
+
+Ideally you must have a dedicated nodes for etcd cluster but for the demo purpose, we are going to use master nodes as etcd nodes as well.
+
+So lets start building etcd cluster.
+
+We are going to configure etcd in a secure fashion so we are going to need some SSL certificates generated. For that purpose, we will use cfssl and cfssljson utilities.
+
+So lets download and install those utilties first.
+
+```bash
+connect to master0 
