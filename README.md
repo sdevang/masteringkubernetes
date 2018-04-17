@@ -16,6 +16,7 @@ The overall setup will look like as following.
       * [Bootstrapping Kubenetes](#bootstrapping-kubenetes)
       * [Installing CNI Plugin](#installing-cni-plugin)
       * [Adding Worker nodes](#adding-worker-nodes)
+      * [Kubernetes Dashboard Addon](#kubernetes-dashboard-addon)
       * [Deploying a POD](#deploying-a-pod)
 
 ## Infrastructure Setup
