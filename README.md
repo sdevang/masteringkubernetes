@@ -916,7 +916,15 @@ When you ran  kubeadm init command, it would have printed the command to run on 
 ```bash
 #kubeadm join --discovery-token bae417.d0611fe71acb46b4 --discovery-token-ca-cert-hash b039f63d451414e06dbf5eb806a0ea4d3deae08661e0af981797e24fe396e661 192.168.33.50:6443
 
-Please note --discovery-token and --discovery-token-ca-cert-hash will be different for your setup. 
+Please note --discovery-token and --discovery-token-ca-cert-hash will be different for your setup.
+```
+
+## Kubernetes Dashboard Addon
+
+To deploy Dashboard, execute following command:
+
+```bash
+$ kubectl apply -f https://raw.githubusercontent.com/kubernetes/dashboard/master/src/deploy/recommended/kubernetes-dashboard.yaml
 ```
 
 ## Deploying a POD
