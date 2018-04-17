@@ -400,4 +400,239 @@ EOF
 
 #cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -profile=client client.json | cfssljson -bare client
 
+#export PEER_NAME=$(hostname)
+#export PRIVATE_IP=$(ip addr show enp0s8 | grep -Po 'inet \K[\d.]+')
+
+#cfssl print-defaults csr > config.json
+#sed -i '0,/CN/{s/example\.net/'"$PEER_NAME"'/}' config.json
+#sed -i 's/www\.example\.net/'"$PRIVATE_IP"'/' config.json
+#sed -i 's/example\.net/'"$PEER_NAME"'/' config.json
+
+#cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -profile=server config.json | cfssljson -bare server
+#cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -profile=peer config.json | cfssljson -bare peer
 ```
+
+Above commands would have generated a few certificates under /etc/kubernetes/pki/etcd directory on master0 node.
+
+Now lets copy over these certificates to master1 and master2 nodes.
+
+```bash
+
+$ssh master0
+$sudo su - 
+#cd /etc/kubernetes/pki/etcd
+#scp ca.pem root@master1:/etc/kubernetes/pki/etcd/ca.pem
+#scp ca-key.pem root@master1:/etc/kubernetes/pki/etcd/ca-key.pem
+#scp client.pem root@master1:/etc/kubernetes/pki/etcd/client.pem
+#scp client-key.pem root@master1:/etc/kubernetes/pki/etcd/client-key.pem
+#scp ca-config.json root@master1:/etc/kubernetes/pki/etcd/ca-config.json
+
+#scp ca.pem root@master2:/etc/kubernetes/pki/etcd/ca.pem
+#scp ca-key.pem root@master2:/etc/kubernetes/pki/etcd/ca-key.pem
+#scp client.pem root@master2:/etc/kubernetes/pki/etcd/client.pem
+#scp client-key.pem root@master2:/etc/kubernetes/pki/etcd/client-key.pem
+#scp ca-config.json root@master2:/etc/kubernetes/pki/etcd/ca-config.json
+
+```
+Now lets create etcd environment file on all master nodes.
+
+
+```bash
+$ssh master0
+$sudo su - 
+#export PEER_NAME=$(hostname)
+#export PRIVATE_IP=$(ip addr show enp0s8 | grep -Po 'inet \K[\d.]+') <-- Please rememeber so replace enp0s8 with your NIC ID.
+#touch /etc/etcd.env
+#echo "PEER_NAME=$PEER_NAME" >> /etc/etcd.env
+#echo "PRIVATE_IP=$PRIVATE_IP" >> /etc/etcd.env
+
+$ssh master1
+$sudo su - 
+#export PEER_NAME=$(hostname)
+#export PRIVATE_IP=$(ip addr show enp0s8 | grep -Po 'inet \K[\d.]+') <-- Please rememeber so replace enp0s8 with your NIC ID.
+#touch /etc/etcd.env
+#echo "PEER_NAME=$PEER_NAME" >> /etc/etcd.env
+#echo "PRIVATE_IP=$PRIVATE_IP" >> /etc/etcd.env
+
+$ssh master2
+$sudo su - 
+#export PEER_NAME=$(hostname)
+#export PRIVATE_IP=$(ip addr show enp0s8 | grep -Po 'inet \K[\d.]+') <-- Please rememeber so replace enp0s8 with your NIC ID.
+#touch /etc/etcd.env
+#echo "PEER_NAME=$PEER_NAME" >> /etc/etcd.env
+#echo "PRIVATE_IP=$PRIVATE_IP" >> /etc/etcd.env
+```
+Now lets download etcd binary. Please note kubernetes is bit fussy with etcd version so download the supported version of etcd only.
+
+```bash
+$ssh master0
+$sudo su - 
+export ETCD_VERSION=v3.1.10
+curl -sSL https://github.com/coreos/etcd/releases/download/${ETCD_VERSION}/etcd-${ETCD_VERSION}-linux-amd64.tar.gz | tar -xzv --strip-components=1 -C /usr/local/bin/
+rm -rf etcd-$ETCD_VERSION-linux-amd64*
+
+$ssh master1
+$sudo su - 
+export ETCD_VERSION=v3.1.10
+curl -sSL https://github.com/coreos/etcd/releases/download/${ETCD_VERSION}/etcd-${ETCD_VERSION}-linux-amd64.tar.gz | tar -xzv --strip-components=1 -C /usr/local/bin/
+rm -rf etcd-$ETCD_VERSION-linux-amd64*
+
+$ssh master2
+$sudo su - 
+export ETCD_VERSION=v3.1.10
+curl -sSL https://github.com/coreos/etcd/releases/download/${ETCD_VERSION}/etcd-${ETCD_VERSION}-linux-amd64.tar.gz | tar -xzv --strip-components=1 -C /usr/local/bin/
+rm -rf etcd-$ETCD_VERSION-linux-amd64*
+```
+
+After that lets create a service defination file which will be used to start etcd service on each node.
+
+```bash
+$ssh master0
+$sudo su - 
+#export PEER_NAME=$(hostname)
+#export PRIVATE_IP=$(ip addr show enp0s8 | grep -Po 'inet \K[\d.]+')
+#cat >/etc/systemd/system/etcd.service <<EOF
+[Unit]
+Description=etcd
+Documentation=https://github.com/coreos/etcd
+Conflicts=etcd.service
+Conflicts=etcd2.service
+
+[Service]
+EnvironmentFile=/etc/etcd.env
+Type=notify
+Restart=always
+RestartSec=5s
+LimitNOFILE=40000
+TimeoutStartSec=0
+
+ExecStart=/usr/local/bin/etcd --name ${PEER_NAME} \
+    --data-dir /var/lib/etcd \
+    --listen-client-urls https://${PRIVATE_IP}:2379 \
+    --advertise-client-urls https://${PRIVATE_IP}:2379 \
+    --listen-peer-urls https://${PRIVATE_IP}:2380 \
+    --initial-advertise-peer-urls https://${PRIVATE_IP}:2380 \
+    --cert-file=/etc/kubernetes/pki/etcd/server.pem \
+    --key-file=/etc/kubernetes/pki/etcd/server-key.pem \
+    --client-cert-auth \
+    --trusted-ca-file=/etc/kubernetes/pki/etcd/ca.pem \
+    --peer-cert-file=/etc/kubernetes/pki/etcd/peer.pem \
+    --peer-key-file=/etc/kubernetes/pki/etcd/peer-key.pem \
+    --peer-client-cert-auth \
+    --peer-trusted-ca-file=/etc/kubernetes/pki/etcd/ca.pem \
+    --initial-cluster master0=https://master0:2380,master1=https://master1:2380,master2=https://master2:2380 \
+    --initial-cluster-token my-etcd-token \
+    --initial-cluster-state new
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+$ssh master1
+$sudo su - 
+#export PEER_NAME=$(hostname)
+#export PRIVATE_IP=$(ip addr show enp0s8 | grep -Po 'inet \K[\d.]+')
+#cat >/etc/systemd/system/etcd.service <<EOF
+[Unit]
+Description=etcd
+Documentation=https://github.com/coreos/etcd
+Conflicts=etcd.service
+Conflicts=etcd2.service
+
+[Service]
+EnvironmentFile=/etc/etcd.env
+Type=notify
+Restart=always
+RestartSec=5s
+LimitNOFILE=40000
+TimeoutStartSec=0
+
+ExecStart=/usr/local/bin/etcd --name ${PEER_NAME} \
+    --data-dir /var/lib/etcd \
+    --listen-client-urls https://${PRIVATE_IP}:2379 \
+    --advertise-client-urls https://${PRIVATE_IP}:2379 \
+    --listen-peer-urls https://${PRIVATE_IP}:2380 \
+    --initial-advertise-peer-urls https://${PRIVATE_IP}:2380 \
+    --cert-file=/etc/kubernetes/pki/etcd/server.pem \
+    --key-file=/etc/kubernetes/pki/etcd/server-key.pem \
+    --client-cert-auth \
+    --trusted-ca-file=/etc/kubernetes/pki/etcd/ca.pem \
+    --peer-cert-file=/etc/kubernetes/pki/etcd/peer.pem \
+    --peer-key-file=/etc/kubernetes/pki/etcd/peer-key.pem \
+    --peer-client-cert-auth \
+    --peer-trusted-ca-file=/etc/kubernetes/pki/etcd/ca.pem \
+    --initial-cluster master0=https://master0:2380,master1=https://master1:2380,master2=https://master2:2380 \
+    --initial-cluster-token my-etcd-token \
+    --initial-cluster-state new
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+$ssh master2
+$sudo su - 
+#export PEER_NAME=$(hostname)
+#export PRIVATE_IP=$(ip addr show enp0s8 | grep -Po 'inet \K[\d.]+')
+#cat >/etc/systemd/system/etcd.service <<EOF
+[Unit]
+Description=etcd
+Documentation=https://github.com/coreos/etcd
+Conflicts=etcd.service
+Conflicts=etcd2.service
+
+[Service]
+EnvironmentFile=/etc/etcd.env
+Type=notify
+Restart=always
+RestartSec=5s
+LimitNOFILE=40000
+TimeoutStartSec=0
+
+ExecStart=/usr/local/bin/etcd --name ${PEER_NAME} \
+    --data-dir /var/lib/etcd \
+    --listen-client-urls https://${PRIVATE_IP}:2379 \
+    --advertise-client-urls https://${PRIVATE_IP}:2379 \
+    --listen-peer-urls https://${PRIVATE_IP}:2380 \
+    --initial-advertise-peer-urls https://${PRIVATE_IP}:2380 \
+    --cert-file=/etc/kubernetes/pki/etcd/server.pem \
+    --key-file=/etc/kubernetes/pki/etcd/server-key.pem \
+    --client-cert-auth \
+    --trusted-ca-file=/etc/kubernetes/pki/etcd/ca.pem \
+    --peer-cert-file=/etc/kubernetes/pki/etcd/peer.pem \
+    --peer-key-file=/etc/kubernetes/pki/etcd/peer-key.pem \
+    --peer-client-cert-auth \
+    --peer-trusted-ca-file=/etc/kubernetes/pki/etcd/ca.pem \
+    --initial-cluster master0=https://master0:2380,master1=https://master1:2380,master2=https://master2:2380 \
+    --initial-cluster-token my-etcd-token \
+    --initial-cluster-state new
+
+[Install]
+WantedBy=multi-user.target
+EOF
+```
+
+After that on each master nodes,
+
+```bash
+#systemctl daemon-reload
+#systemctl start etcd
+#systemctl enable etcd
+```
+
+The last command should have started the etcd cluster so lets verify it.
+
+```bash
+$ssh master0
+$sudo su - 
+#export ETCDCTL_ENDPOINTS=https://master0:2379
+#export ETCDCTL_CA_FILE=/etc/kubernetes/pki/etcd/ca.pem
+#export ETCDCTL_CERT_FILE=/etc/kubernetes/pki/etcd/server.pem
+#export ETCDCTL_KEY_FILE=/etc/kubernetes/pki/etcd/server-key.pem
+
+#etcdctl member list
+
+This should return three nodes which are running etcd cluster.
+```
+
+## Keepalived Configuration
+
