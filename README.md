@@ -219,7 +219,21 @@ If the ansible playbooks ran successfully then you have configured the nodes for
 
 ## Setting up SSH Config
 
+Now lets setup SSH config for our VMs. SSH config is not a mandatory step but having SSH config setup will help your life easy.
 
+Run the following command,
+
+```bash
+
+$vagrant ssh-config master0 >> $HOME/.ssh/config
+$vagrant ssh-config master1 >> $HOME/.ssh/config
+$vagrant ssh-config master2 >> $HOME/.ssh/config
+$vagrant ssh-config node1 >> $HOME/.ssh/config
+$vagrant ssh-config node2 >> $HOME/.ssh/config
+$vagrant ssh-config node3 >> $HOME/.ssh/config
+
+```
+The above command will add SSH configuration for each VM into your $HOME/.ssh/config file so after that you can ssh into any machine by referring to its name. You do not need any DNS servers for VM's hostname to IP resolution after you setup SSH config as shown above.
 
 ## Passwordless SSH authentication
 
@@ -231,6 +245,54 @@ The first step is,
 Generate SSH Key pair on master0 node,
 
 $ssh master0
+$sudo su - 
+#ssh-keygen -t rsa <-- Accept the default for everything
+
+$ssh master1
+$sudo su - 
+#ssh-keygen -t rsa <-- Accept the default for everything
+
+$ssh master2
+$sudo su - 
+#ssh-keygen -t rsa <-- Accept the default for everything
+```
+
+One the SSH key pair is generated on all the master nodes, you need to copy the content of each respective node's public into a file called authorized_keys on all the master nodes.
+
+```bash
+$ssh master0
+$sudo su - 
+#cat $HOME/.ssh/id_rsa.pub >> $HOME/.ssh/authorized_keys
+
+$ssh master1
+$sudo su - 
+#cat $HOME/.ssh/id_rsa.pub <-- Copy the content of this file and paste on master0:/root/.ssh/authorized_keys
+
+$ssh master2
+$sudo su - 
+#cat $HOME/.ssh/id_rsa.pub <-- Copy the content of this file and paste on master0:/root/.ssh/authorized_keys
+```
+
+Now master0 node's authorized_keys file have the public key for master0, master1 and master2 nodes so copy over that file to each master nodes.
+
+```bash
+$ssh master0
+$sudo su - 
+#scp $HOME/.ssh/authorized_keys master1:/root/.ssh
+#scp $HOME/.ssh/authorized_keys master2:/root/.ssh
+```
+
+Lets verify now whether we can run any commands remotely on any of the master node and it should not ask for the password.
+
+```bash
+$ssh master0
+$sudo su - 
+#ssh master0 date
+#ssh master1 date
+#ssh master2 date
+```
+If it does not ask for password, then you have configured password less authentication on all the master nodes.
+
 
 ## ETCd clustering
 
