@@ -6,6 +6,18 @@ The overall setup will look like as following.
 
 ![Alt text](K8-Setup.png?raw=true "Kubernetes Setup")
 
+   * [Mastering Kubernetes](#mastering-kubernetes)
+      * [Infrastructure Setup](#infrastructure-setup)
+      * [Preparing VMs for Kubernetes](#preparing-vms-for-kubernetes)
+      * [Setting up SSH Config](#setting-up-ssh-config)
+      * [Passwordless SSH authentication](#passwordless-ssh-authentication)
+      * [ETCd clustering](#etcd-clustering)
+      * [Keepalived Configuration](#keepalived-configuration)
+      * [Bootstrapping Kubenetes](#bootstrapping-kubenetes)
+      * [Installing CNI Plugin](#installing-cni-plugin)
+      * [Adding Worker nodes](#adding-worker-nodes)
+      * [Deploying a POD](#deploying-a-pod)
+
 ## Infrastructure Setup
 
 So lets start creating the infrastructure needed for our kubernetes setup.
