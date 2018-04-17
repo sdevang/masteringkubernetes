@@ -308,3 +308,96 @@ So lets download and install those utilties first.
 
 ```bash
 connect to master0 
+$ssh master0
+$sudo su - 
+#curl -o /usr/local/bin/cfssl https://pkg.cfssl.org/R1.2/cfssl_linux-amd64
+#curl -o /usr/local/bin/cfssljson https://pkg.cfssl.org/R1.2/cfssljson_linux-amd64
+#chmod +x /usr/local/bin/cfssl*
+
+connect to master1 
+$ssh master1
+$sudo su - 
+#curl -o /usr/local/bin/cfssl https://pkg.cfssl.org/R1.2/cfssl_linux-amd64
+#curl -o /usr/local/bin/cfssljson https://pkg.cfssl.org/R1.2/cfssljson_linux-amd64
+#chmod +x /usr/local/bin/cfssl*
+
+connect to master2
+$ssh master2
+$sudo su - 
+#curl -o /usr/local/bin/cfssl https://pkg.cfssl.org/R1.2/cfssl_linux-amd64
+#curl -o /usr/local/bin/cfssljson https://pkg.cfssl.org/R1.2/cfssljson_linux-amd64
+#chmod +x /usr/local/bin/cfssl*
+```
+
+On master0 node,
+
+```bash
+
+#mkdir -p /etc/kubernetes/pki/etcd
+#cd /etc/kubernetes/pki/etcd
+
+#cat >ca-config.json <<EOF
+{
+    "signing": {
+        "default": {
+            "expiry": "43800h"
+        },
+        "profiles": {
+            "server": {
+                "expiry": "43800h",
+                "usages": [
+                    "signing",
+                    "key encipherment",
+                    "server auth",
+                    "client auth"
+                ]
+            },
+            "client": {
+                "expiry": "43800h",
+                "usages": [
+                    "signing",
+                    "key encipherment",
+                    "client auth"
+                ]
+            },
+            "peer": {
+                "expiry": "43800h",
+                "usages": [
+                    "signing",
+                    "key encipherment",
+                    "server auth",
+                    "client auth"
+                ]
+            }
+        }
+    }
+}
+EOF
+
+#cat >ca-csr.json <<EOF
+{
+    "CN": "etcd",
+    "key": {
+        "algo": "rsa",
+        "size": 2048
+    }
+}
+EOF
+
+#cfssl gencert -initca ca-csr.json | cfssljson -bare ca -
+
+On master0:
+
+#cat >client.json <<EOF
+{
+    "CN": "client",
+    "key": {
+        "algo": "ecdsa",
+        "size": 256
+    }
+}
+EOF
+
+#cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -profile=client client.json | cfssljson -bare client
+
+```
