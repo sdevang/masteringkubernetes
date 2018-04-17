@@ -773,3 +773,126 @@ EOF
 ```
 
 Now we have keepalived configured on each master nodes.
+
+## Bootstrapping Kubenetes
+
+On master0 node,
+
+```bash
+cat >config.yaml <<EOF
+apiVersion: kubeadm.k8s.io/v1alpha1
+kind: MasterConfiguration
+api:
+  advertiseAddress: 192.168.33.20
+etcd:
+  endpoints:
+  - https://192.168.33.20:2379
+  - https://192.168.33.21:2379
+  - https://192.168.33.22:2379
+  caFile: /etc/kubernetes/pki/etcd/ca.pem
+  certFile: /etc/kubernetes/pki/etcd/client.pem
+  keyFile: /etc/kubernetes/pki/etcd/client-key.pem
+networking:
+  podSubnet: 10.16.0.0/16
+apiServerCertSANs:
+- 192.168.33.50
+- 192.168.33.20
+- 192.168.33.21
+- 192.168.33.22
+apiServerExtraArgs:
+  apiserver-count: "3"
+EOF
+
+#kubeadm init --config=config.yaml
+```
+Kubeadm init on master0 node will create a few certificates under /etc/kubernetes/pki directory so copy over those certificates on master1 and master2 before you run kubeadm init on master1 and master2.
+
+On master0 node,
+
+```bash
+#scp -p /etc/kubernetes/pki/* master1:/etc/kubernetes/pki/
+#scp -p /etc/kubernetes/pki/* master2:/etc/kubernetes/pki/
+```
+
+On master1 node,
+
+```bash
+cat >config.yaml <<EOF
+apiVersion: kubeadm.k8s.io/v1alpha1
+kind: MasterConfiguration
+api:
+  advertiseAddress: 192.168.33.21
+etcd:
+  endpoints:
+  - https://192.168.33.20:2379
+  - https://192.168.33.21:2379
+  - https://192.168.33.22:2379
+  caFile: /etc/kubernetes/pki/etcd/ca.pem
+  certFile: /etc/kubernetes/pki/etcd/client.pem
+  keyFile: /etc/kubernetes/pki/etcd/client-key.pem
+networking:
+  podSubnet: 10.16.0.0/16
+apiServerCertSANs:
+- 192.168.33.50
+- 192.168.33.20
+- 192.168.33.21
+- 192.168.33.22
+apiServerExtraArgs:
+  apiserver-count: "3"
+EOF
+
+#kubeadm init --config=config.yaml
+
+```
+
+On master2 nodes,
+
+```bash
+cat >config.yaml <<EOF
+apiVersion: kubeadm.k8s.io/v1alpha1
+kind: MasterConfiguration
+api:
+  advertiseAddress: 192.168.33.22
+etcd:
+  endpoints:
+  - https://192.168.33.20:2379
+  - https://192.168.33.21:2379
+  - https://192.168.33.22:2379
+  caFile: /etc/kubernetes/pki/etcd/ca.pem
+  certFile: /etc/kubernetes/pki/etcd/client.pem
+  keyFile: /etc/kubernetes/pki/etcd/client-key.pem
+networking:
+  podSubnet: 10.16.0.0/16
+apiServerCertSANs:
+- 192.168.33.50
+- 192.168.33.20
+- 192.168.33.21
+- 192.168.33.22
+apiServerExtraArgs:
+  apiserver-count: "3"
+EOF
+
+#kubeadm init --config=config.yaml
+
+```
+Now we have 3 master nodes configured for our kubernetes cluster. To verify run,
+
+```bash
+$ssh master0
+$kubectl get nodes
+$kubectl get pods --all-namespaces
+```
+
+## Configuring CNI Plugin
+
+## Adding Worker nodes
+
+When you ran  kubeadm init command, it would have printed the command to run on worker node when want to add them into our kubenernetes cluster so get that command and on each worker node,
+
+```bash
+#kubeadm join --discovery-token bae417.d0611fe71acb46b4 --discovery-token-ca-cert-hash b039f63d451414e06dbf5eb806a0ea4d3deae08661e0af981797e24fe396e661 192.168.33.50:6443
+
+Please note --discovery-token and --discovery-token-ca-cert-hash will be different for your setup. 
+```
+
+## Deploying a POD
