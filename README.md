@@ -879,11 +879,23 @@ Now we have 3 master nodes configured for our kubernetes cluster. To verify run,
 
 ```bash
 $ssh master0
-$kubectl get nodes
-$kubectl get pods --all-namespaces
+$sudo su - 
+#export KUBECONFIG=/etc/kubernetes/admin.conf
+#kubectl get nodes
+#kubectl get pods --all-namespaces
 ```
 
-## Configuring CNI Plugin
+## Installing CNI Plugin
+
+As we have kubernetes cluster running now, lets install CNI plugin (weave-net) . CNI plug-in will setup the kubernetes networking within the cluster.
+
+On master0 node,
+
+```bash
+#export KUBECONFIG=/etc/kubernetes/admin.conf
+#export kubever=$(kubectl version | base64 | tr -d '\n')
+#kubectl apply -f "https://cloud.weave.works/k8s/net?k8s-version=$kubever"
+```
 
 ## Adding Worker nodes
 
@@ -896,3 +908,19 @@ Please note --discovery-token and --discovery-token-ca-cert-hash will be differe
 ```
 
 ## Deploying a POD
+
+On any of the master ndoes,
+
+```bash
+#export KUBECONFIG=/etc/kubernetes/admin.conf
+#kubectl create -f https://k8s.io/docs/tasks/debug-application-cluster/shell-demo.yaml
+#kubectl get pods
+```
+
+Get a shell inside your containers,
+
+```bash
+#export KUBECONFIG=/etc/kubernetes/admin.conf
+#kubectl get pods
+#kubectl exec -it <<POD_Name>> -- /bin/bash
+```
